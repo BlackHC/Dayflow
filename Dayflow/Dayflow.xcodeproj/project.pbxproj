@@ -30,6 +30,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0DD097212EBA150200FE1521 /* Dayflow.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = Dayflow.xctestplan; sourceTree = "<group>"; };
 		C4C1D2A12DB56805007D5A55 /* Dayflow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dayflow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C4C1D2B22DB56806007D5A55 /* DayflowTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DayflowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C4C1D2BC2DB56806007D5A55 /* DayflowUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DayflowUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -92,6 +93,7 @@
 		C4C1D2982DB56805007D5A55 = {
 			isa = PBXGroup;
 			children = (
+				0DD097212EBA150200FE1521 /* Dayflow.xctestplan */,
 				C4C1D2A32DB56805007D5A55 /* Dayflow */,
 				FEFD599FBA059B170B03FA5E /* DayflowTests */,
 				C4C1D2A22DB56805007D5A55 /* Products */,
@@ -480,9 +482,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 60;
-				DEVELOPMENT_TEAM = L75WYD8X4Y;
+				DEVELOPMENT_TEAM = L2H3U6N23W;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.1;
 				MARKETING_VERSION = 1.1.20;
@@ -498,9 +501,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 60;
-				DEVELOPMENT_TEAM = L75WYD8X4Y;
+				DEVELOPMENT_TEAM = L2H3U6N23W;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.1;
 				MARKETING_VERSION = 1.1.20;
@@ -515,13 +519,15 @@
 		C4C1D2CD2DB56806007D5A55 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 60;
-				DEVELOPMENT_TEAM = L75WYD8X4Y;
+				DEVELOPMENT_TEAM = L2H3U6N23W;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.1.20;
 				PRODUCT_BUNDLE_IDENTIFIER = teleportlabs.com.AmiTimeUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TEST_TARGET_NAME = Dayflow;
@@ -531,13 +537,15 @@
 		C4C1D2CE2DB56806007D5A55 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 60;
-				DEVELOPMENT_TEAM = L75WYD8X4Y;
+				DEVELOPMENT_TEAM = L2H3U6N23W;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.1.20;
 				PRODUCT_BUNDLE_IDENTIFIER = teleportlabs.com.AmiTimeUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TEST_TARGET_NAME = Dayflow;

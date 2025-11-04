@@ -1,0 +1,39 @@
+{
+  "configurations" : [
+    {
+      "id" : "50A810D3-DC06-43C6-9978-B383B4D4EB39",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "performanceAntipatternCheckerEnabled" : true,
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:Dayflow.xcodeproj",
+      "identifier" : "C4C1D2A02DB56805007D5A55",
+      "name" : "Dayflow"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:Dayflow.xcodeproj",
+        "identifier" : "C4C1D2B12DB56806007D5A55",
+        "name" : "DayflowTests"
+      }
+    },
+    {
+      "enabled" : false,
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:Dayflow.xcodeproj",
+        "identifier" : "C4C1D2BB2DB56806007D5A55",
+        "name" : "DayflowUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

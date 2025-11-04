@@ -83,6 +83,16 @@ struct SettingsView: View {
     @State private var timelapsesLimitIndex: Int = 0
     @State private var showLimitConfirmation = false
     @State private var pendingLimit: PendingLimit?
+    
+    #if DEBUG
+    // Debug/Developer state
+    @State private var isPopulatingData = false
+    @State private var populationDays = 3
+    @State private var dbStats: (cards: Int, batches: Int, observations: Int, chunks: Int) = (0, 0, 0, 0)
+    @State private var showClearConfirmation = false
+    @State private var debugMessage: String?
+    @State private var debugMessageType: DebugMessageType = .success
+    #endif
 
     // Providers – debug log copy feedback
 
@@ -776,8 +786,238 @@ struct SettingsView: View {
                         .foregroundColor(.black.opacity(0.45))
                 }
             }
+            
+            #if DEBUG
+            developerToolsContent
+            #endif
         }
     }
+    
+    #if DEBUG
+    // MARK: - Developer Tools (Debug Only)
+    
+    private var developerToolsContent: some View {
+        SettingsCard(
+            title: "Developer Tools",
+            subtitle: "Populate mock data for UI development (Debug build only)"
+        ) {
+            VStack(alignment: .leading, spacing: 20) {
+                // Database stats
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Current Database Stats")
+                        .font(.custom("Nunito", size: 13))
+                        .fontWeight(.semibold)
+                        .foregroundColor(.black.opacity(0.7))
+                    
+                    HStack(spacing: 16) {
+                        statBadge(label: "Timeline Cards", value: "\(dbStats.cards)")
+                        statBadge(label: "Batches", value: "\(dbStats.batches)")
+                        statBadge(label: "Observations", value: "\(dbStats.observations)")
+                        statBadge(label: "Chunks", value: "\(dbStats.chunks)")
+                    }
+                    
+                    Button {
+                        refreshDatabaseStats()
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 11))
+                            Text("Refresh")
+                                .font(.custom("Nunito", size: 12))
+                        }
+                        .foregroundColor(Color(red: 0.45, green: 0.26, blue: 0.04))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.top, 4)
+                }
+                
+                Divider()
+                    .background(Color.black.opacity(0.1))
+                
+                // Populate data section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Generate Mock Data")
+                        .font(.custom("Nunito", size: 13))
+                        .fontWeight(.semibold)
+                        .foregroundColor(.black.opacity(0.7))
+                    
+                    HStack(spacing: 12) {
+                        Text("Number of days:")
+                            .font(.custom("Nunito", size: 13))
+                            .foregroundColor(.black.opacity(0.6))
+                        
+                        Picker("", selection: $populationDays) {
+                            Text("1").tag(1)
+                            Text("3").tag(3)
+                            Text("7").tag(7)
+                            Text("14").tag(14)
+                            Text("30").tag(30)
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(maxWidth: 200)
+                    }
+                    
+                    Button {
+                        populateMockData()
+                    } label: {
+                        HStack(spacing: 8) {
+                            if isPopulatingData {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                                    .frame(width: 14, height: 14)
+                                Text("Populating...")
+                            } else {
+                                Image(systemName: "plus.circle.fill")
+                                Text("Populate with Sample Data")
+                            }
+                        }
+                        .font(.custom("Nunito", size: 13))
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(isPopulatingData ? Color.gray : Color(red: 0.45, green: 0.26, blue: 0.04))
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .disabled(isPopulatingData)
+                }
+                
+                Divider()
+                    .background(Color.black.opacity(0.1))
+                
+                // Clear data section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Clear All Mock Data")
+                        .font(.custom("Nunito", size: 13))
+                        .fontWeight(.semibold)
+                        .foregroundColor(.black.opacity(0.7))
+                    
+                    Text("Remove all timeline cards, batches, observations, and mock chunks from the database.")
+                        .font(.custom("Nunito", size: 12))
+                        .foregroundColor(.black.opacity(0.5))
+                        .fixedSize(horizontal: false, vertical: true)
+                    
+                    Button {
+                        showClearConfirmation = true
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "trash")
+                            Text("Clear All Mock Data")
+                        }
+                        .font(.custom("Nunito", size: 13))
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.red)
+                        )
+                    }
+                    .alert("Clear All Data?", isPresented: $showClearConfirmation) {
+                        Button("Clear All", role: .destructive) {
+                            clearAllData()
+                        }
+                        Button("Cancel", role: .cancel) {
+                        }
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+                
+                // Debug message display
+                if let message = debugMessage {
+                    HStack(spacing: 8) {
+                        Image(systemName: debugMessageType == .success ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                            .foregroundColor(debugMessageType == .success ? .green : .orange)
+                        Text(message)
+                            .font(.custom("Nunito", size: 12))
+                            .foregroundColor(.black.opacity(0.7))
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(debugMessageType == .success ? Color.green.opacity(0.1) : Color.orange.opacity(0.1))
+                    )
+                }
+            }
+        }
+        .onAppear {
+            refreshDatabaseStats()
+        }
+    }
+    
+    private func statBadge(label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.custom("Nunito", size: 16))
+                .fontWeight(.bold)
+                .foregroundColor(Color(red: 0.45, green: 0.26, blue: 0.04))
+            Text(label)
+                .font(.custom("Nunito", size: 10))
+                .foregroundColor(.black.opacity(0.5))
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color(hex: "FFF4E0"))
+        )
+    }
+    
+    private func refreshDatabaseStats() {
+        let generator = MockDataGenerator()
+        dbStats = generator.getDatabaseStats()
+    }
+    
+    private func populateMockData() {
+        isPopulatingData = true
+        debugMessage = nil
+        
+        Task.detached(priority: .utility) {
+            let generator = MockDataGenerator()
+            generator.generateMockData(days: populationDays)
+            
+            await MainActor.run {
+                isPopulatingData = false
+                refreshDatabaseStats()
+                debugMessage = "Successfully generated \(populationDays) days of mock data"
+                debugMessageType = .success
+                
+                // Clear message after 5 seconds
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                    debugMessage = nil
+                }
+            }
+        }
+    }
+    
+    private func clearAllData() {
+        Task.detached(priority: .utility) {
+            let generator = MockDataGenerator()
+            generator.clearAllData()
+            
+            await MainActor.run {
+                refreshDatabaseStats()
+                debugMessage = "Successfully cleared all data"
+                debugMessageType = .success
+                
+                // Clear message after 5 seconds
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                    debugMessage = nil
+                }
+            }
+        }
+    }
+    
+    private enum DebugMessageType {
+        case success
+        case warning
+    }
+    #endif
 
     // MARK: - Storage helpers
 

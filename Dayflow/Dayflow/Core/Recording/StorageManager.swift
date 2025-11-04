@@ -355,7 +355,7 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
     }
 
     // TEMPORARY DEBUG: Timing helpers for database operations
-    private func timedWrite<T>(_ label: String, _ block: (Database) throws -> T) throws -> T {
+    internal func timedWrite<T>(_ label: String, _ block: (Database) throws -> T) throws -> T {
         let callStart = CFAbsoluteTimeGetCurrent()
         var execStart: CFAbsoluteTime = 0
         var execEnd: CFAbsoluteTime = 0
@@ -413,7 +413,7 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
         }
     }
 
-    private func timedRead<T>(_ label: String, _ block: (Database) throws -> T) throws -> T {
+    internal func timedRead<T>(_ label: String, _ block: (Database) throws -> T) throws -> T {
         let callStart = CFAbsoluteTimeGetCurrent()
         var execStart: CFAbsoluteTime = 0
         var execEnd: CFAbsoluteTime = 0
