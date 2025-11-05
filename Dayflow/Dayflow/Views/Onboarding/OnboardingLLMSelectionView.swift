@@ -167,44 +167,7 @@ struct OnboardingLLMSelectionView: View {
                         selectedProvider = "gemini"
                     }
                 }
-            ),
-            
-            /*
-            // Dayflow Pro card
-            FlexibleProviderCard(
-                id: "dayflow",
-                title: "Dayflow Pro",
-                badgeText: "EASIEST SETUP",
-                badgeType: .blue,
-                icon: "sparkles",
-                features: [
-                    ("Zero setup - just sign in and go", true),
-                    ("Your data is processed then immediately deleted", true),
-                    ("Never used to train AI models", true),
-                    ("Always the fastest, most capable AI", true),
-                    ("Fixed monthly pricing, no surprises", true),
-                    ("Requires internet connection", false)
-                ],
-                isSelected: selectedProvider == "dayflow",
-                buttonMode: .onboarding(onProceed: {
-                    // Only proceed if this provider is selected
-                    if selectedProvider == "dayflow" {
-                        saveProviderSelection()
-                        onNext("dayflow")
-                    } else {
-                        // Select the card first
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
-                            selectedProvider = "dayflow"
-                        }
-                    }
-                }),
-                onSelect: {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
-                        selectedProvider = "dayflow"
-                    }
-                }
             )
-            */
         ]
     }
     
@@ -216,8 +179,6 @@ struct OnboardingLLMSelectionView: View {
             providerType = .ollamaLocal()
         case "gemini":
             providerType = .geminiDirect
-        case "dayflow":
-            providerType = .dayflowBackend()
         default:
             providerType = .geminiDirect
         }

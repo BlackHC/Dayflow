@@ -40,7 +40,7 @@ Dayflow is a **native macOS application** that automatically records your screen
 - **Screen Recording:** ScreenCaptureKit
 - **Video Processing:** AVFoundation
 - **Database:** GRDB (SQLite wrapper)
-- **AI Providers:** Google Gemini API, Ollama, LM Studio, Dayflow Backend
+- **AI Providers:** Google Gemini API, Ollama, LM Studio
 - **Auto-Updates:** Sparkle framework
 - **Crash Reporting:** Sentry (optional, disabled by default)
 - **Analytics:** PostHog (stubbed out in source builds)
@@ -49,7 +49,7 @@ Dayflow is a **native macOS application** that automatically records your screen
 
 1. **1 FPS Recording:** Minimal resource impact, ~60 frames per minute
 2. **15-Minute Analysis Batches:** Efficient AI processing intervals
-3. **Multiple AI Providers:** Cloud (Gemini, Dayflow Backend) or Local (Ollama, LM Studio)
+3. **Multiple AI Providers:** Cloud (Gemini) or Local (Ollama, LM Studio)
 4. **Timeline Generation:** Automatic activity cards with summaries and categories
 5. **Distraction Tracking:** Highlights time spent on unfocused activities
 6. **Video Timelapses:** Review your day as a sped-up video
@@ -308,11 +308,10 @@ struct ActivityGenerationContext {
 **Provider Selection:**
 - Reads `llmProviderType` from UserDefaults (JSON-encoded `LLMProviderType`)
 - Falls back to Gemini Direct if not configured
-- Migrates deprecated ChatGPT/Claude provider to Gemini or Dayflow
+- Migrates deprecated ChatGPT/Claude provider to Gemini
 
 **Provider Types:**
 - `.geminiDirect`: Google Gemini API with user's API key
-- `.dayflowBackend(endpoint: String)`: Dayflow hosted service
 - `.ollamaLocal(endpoint: String)`: Local Ollama server (default: http://localhost:11434)
 - `.chatGPTClaude`: Deprecated, auto-migrated
 
@@ -410,17 +409,6 @@ struct ActivityGenerationContext {
 // File: Dayflow/Dayflow/Core/AI/OllamaProvider.swift
 // Local LLM integration, 30+ calls per batch
 ```
-
-#### DayflowBackendProvider.swift
-**Purpose:** Dayflow hosted API integration
-
-**Authentication:**
-- Token stored in Keychain via `KeychainManager`
-- Key: "dayflow"
-
-**Endpoint:**
-- Default: `https://api.dayflow.app`
-- Configurable via `.dayflowBackend(endpoint:)`
 
 #### AnalysisManager.swift
 **Purpose:** Batch scheduling and background job coordination
@@ -709,7 +697,6 @@ sub = AppState.shared.$isRecording
 **Keychain Storage:**
 
 - Key: "gemini" → Gemini API key
-- Key: "dayflow" → Dayflow backend token
 - Access via `KeychainManager.shared.retrieve(for:)` and `.store(value:for:)`
 
 ### Error Handling
@@ -1512,11 +1499,6 @@ SELECT * FROM observations ORDER BY id DESC LIMIT 10;
 - Uses your own API key
 - Subject to Google's Gemini API Terms
 - "Paid Services" data handling if billing enabled (no training on your data)
-
-**Dayflow Backend (Cloud):**
-- Your data sent to Dayflow hosted service
-- Uses your account token
-- Subject to Dayflow's privacy policy
 
 **Ollama/LM Studio (Local):**
 - All processing on your machine

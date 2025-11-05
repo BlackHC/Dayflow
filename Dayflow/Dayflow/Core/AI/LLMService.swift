@@ -38,17 +38,9 @@ final class LLMService: LLMServicing {
             print("✅ [LLMService] Successfully decoded provider type: \(decoded)")
             
             if case .chatGPTClaude = decoded {
-                print("⚠️ [LLMService] Deprecated ChatGPT/Claude provider detected. Migrating selection to a supported provider.")
+                print("⚠️ [LLMService] Deprecated ChatGPT/Claude provider detected. Migrating to Gemini Direct provider.")
                 
-                let fallbackType: LLMProviderType = {
-                    if let dayflowToken = KeychainManager.shared.retrieve(for: "dayflow"), !dayflowToken.isEmpty {
-                        print("   ↳ Found Dayflow backend credentials. Migrating to Dayflow backend provider.")
-                        return .dayflowBackend()
-                    }
-                    
-                    print("   ↳ No Dayflow token detected. Migrating to Gemini Direct provider.")
-                    return .geminiDirect
-                }()
+                let fallbackType: LLMProviderType = .geminiDirect
                 
                 do {
                     let encodedFallback = try JSONEncoder().encode(fallbackType)
@@ -78,14 +70,6 @@ final class LLMService: LLMServicing {
         switch type {
         case .geminiDirect:
             return makeGeminiProvider()
-        case .dayflowBackend(let endpoint):
-            if let token = KeychainManager.shared.retrieve(for: "dayflow"), !token.isEmpty {
-                return DayflowBackendProvider(token: token, endpoint: endpoint)
-            } else {
-                print("❌ [LLMService] Failed to retrieve Dayflow token from Keychain")
-                return nil
-            }
-
         case .ollamaLocal(let endpoint):
             return OllamaProvider(endpoint: endpoint)
         case .chatGPTClaude:
@@ -107,7 +91,6 @@ final class LLMService: LLMServicing {
     private func providerName() -> String {
         switch providerType {
         case .geminiDirect: return "gemini"
-        case .dayflowBackend: return "dayflow"
         case .ollamaLocal: return "ollama"
         case .chatGPTClaude: return "chat_cli"
         }

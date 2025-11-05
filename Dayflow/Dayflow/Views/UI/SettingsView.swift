@@ -762,7 +762,6 @@ struct SettingsView: View {
         switch id {
         case "ollama": return "Use local AI"
         case "gemini": return "Bring your own API keys"
-        case "dayflow": return "Dayflow Pro"
         default: return id.capitalized
         }
     }
@@ -1301,8 +1300,6 @@ struct SettingsView: View {
                 let preference = GeminiModelPreference.load()
                 selectedGeminiModel = preference.primary
                 savedGeminiModel = preference.primary
-            case .dayflowBackend:
-                currentProvider = "dayflow"
             case .ollamaLocal:
                 currentProvider = "ollama"
             case .chatGPTClaude:
@@ -1323,8 +1320,6 @@ struct SettingsView: View {
     }
 
     private func switchToProvider(_ providerId: String) {
-        if providerId == "dayflow" { return }
-
         let isEditingCurrent = providerId == currentProvider
         if isEditingCurrent {
             AnalyticsService.shared.capture("provider_edit_initiated", ["provider": providerId])
@@ -1343,8 +1338,6 @@ struct SettingsView: View {
             providerType = .ollamaLocal(endpoint: endpoint)
         case "gemini":
             providerType = .geminiDirect
-        case "dayflow":
-            providerType = .dayflowBackend()
         default:
             return
         }
