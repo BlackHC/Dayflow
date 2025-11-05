@@ -186,7 +186,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                        let providerType = try? JSONDecoder().decode(LLMProviderType.self, from: data) {
                         switch providerType {
                         case .geminiDirect: return "gemini"
-                        case .dayflowBackend: return "dayflow"
                         case .ollamaLocal: return "ollama"
                         case .chatGPTClaude: return "chat_cli"
                         }
