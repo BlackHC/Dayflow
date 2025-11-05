@@ -1852,10 +1852,7 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
             }
         }
     }
-}
 
-
-private extension StorageManager {
     func migrateLegacyChunkPathsIfNeeded() {
         guard let bundleID = Bundle.main.bundleIdentifier else { return }
         guard let appSupport = fileMgr.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return }
@@ -1980,7 +1977,7 @@ private extension StorageManager {
         }
     }
     
-    func fetchJournalEntry(for date: String) -> JournalEntry? {
+    internal func fetchJournalEntry(for date: String) -> JournalEntry? {
         return try? timedRead("fetchJournalEntry") { db in
             guard let row = try Row.fetchOne(db, sql: """
                 SELECT id, date, narrative, generated_at, regeneration_count
@@ -2010,7 +2007,7 @@ private extension StorageManager {
         }
     }
     
-    func deleteJournalEntry(for date: String) {
+    internal func deleteJournalEntry(for date: String) {
         try? timedWrite("deleteJournalEntry") { db in
             try db.execute(sql: """
                 DELETE FROM journal_entries WHERE date = ?
@@ -2020,7 +2017,7 @@ private extension StorageManager {
         }
     }
     
-    func fetchRecentJournalEntries(limit: Int = 10) -> [JournalEntry] {
+    internal func fetchRecentJournalEntries(limit: Int = 10) -> [JournalEntry] {
         return (try? timedRead("fetchRecentJournalEntries") { db in
             let rows = try Row.fetchAll(db, sql: """
                 SELECT id, date, narrative, generated_at, regeneration_count

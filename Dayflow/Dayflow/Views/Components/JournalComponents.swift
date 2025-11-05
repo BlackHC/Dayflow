@@ -13,7 +13,7 @@ struct JournalHeaderBadge: View {
     var body: some View {
         Text("Daily Journal")
             .font(.system(size: 24, weight: .semibold))
-            .foregroundColor(
+            .foregroundStyle(
                 LinearGradient(
                     colors: [Color(hex: "#FF8C42"), Color(hex: "#FFB84D")],
                     startPoint: .leading,

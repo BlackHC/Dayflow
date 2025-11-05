@@ -2092,28 +2092,12 @@ private func uploadResumable(data: Data, mimeType: String) async throws -> Strin
         
         // Create log entry
         let log = LLMCall(
-            id: nil,
-            createdAt: Date(),
-            batchId: nil,
-            callGroupId: nil,
-            attempt: 1,
-            provider: "gemini",
-            model: model.rawValue,
-            operation: "generateJournalNarrative",
-            status: "success",
+            timestamp: startTime,
             latency: latency,
-            httpStatus: httpResponse.statusCode,
-            requestMethod: "POST",
-            requestUrl: endpoint,
-            requestHeaders: nil,
-            requestBody: String(data: jsonData, encoding: .utf8),
-            responseHeaders: nil,
-            responseBody: String(data: data, encoding: .utf8),
-            errorDomain: nil,
-            errorCode: nil,
-            errorMessage: nil
+            input: systemPrompt + "\n\n" + userPrompt,
+            output: narrative
         )
-        
+
         return (narrative.trimmingCharacters(in: .whitespacesAndNewlines), log)
     }
 }

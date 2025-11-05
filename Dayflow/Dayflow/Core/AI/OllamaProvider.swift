@@ -1454,7 +1454,7 @@ final class OllamaProvider: LLMProvider {
         let prompt = JournalPrompts.ollamaPrompt(cards: cards, context: context)
         
         let requestBody: [String: Any] = [
-            "model": preferences.modelName,
+            "model": savedModelId,
             "prompt": prompt,
             "stream": false,
             "options": [
@@ -1496,28 +1496,12 @@ final class OllamaProvider: LLMProvider {
         
         // Create log entry
         let log = LLMCall(
-            id: nil,
-            createdAt: Date(),
-            batchId: nil,
-            callGroupId: nil,
-            attempt: 1,
-            provider: "ollama",
-            model: preferences.modelName,
-            operation: "generateJournalNarrative",
-            status: "success",
+            timestamp: startTime,
             latency: latency,
-            httpStatus: httpResponse.statusCode,
-            requestMethod: "POST",
-            requestUrl: url.absoluteString,
-            requestHeaders: nil,
-            requestBody: String(data: jsonData, encoding: .utf8),
-            responseHeaders: nil,
-            responseBody: String(data: data, encoding: .utf8),
-            errorDomain: nil,
-            errorCode: nil,
-            errorMessage: nil
+            input: prompt,
+            output: narrative
         )
-        
+
         return (narrative.trimmingCharacters(in: .whitespacesAndNewlines), log)
     }
 }

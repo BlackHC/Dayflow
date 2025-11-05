@@ -17,6 +17,7 @@ struct ProcessedBatchResult {
 
 protocol LLMServicing {
     func processBatch(_ batchId: Int64, completion: @escaping (Result<ProcessedBatchResult, Error>) -> Void)
+    func generateJournal(for date: Date, completion: @escaping (Result<String, Error>) -> Void)
 }
 
 final class LLMService: LLMServicing {

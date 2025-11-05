@@ -105,13 +105,13 @@ struct DonutChartView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                ForEach(Array(data.enumerated()), id: \.offset) { index, value in
-                    DonutSegment(
-                        startAngle: startAngle(for: index),
-                        endAngle: endAngle(for: index),
-                        color: colorForIndex(index)
-                    )
-                }
+                 ForEach(Array(data.enumerated()), id: \.offset) { index, value in
+                     DonutSegment(
+                         startAngle: startAngle(for: index),
+                         endAngle: endAngle(for: index),
+                         color: colorForIndex(index)
+                     )
+                 }
             }
         }
     }
@@ -141,27 +141,69 @@ struct DonutSegment: View {
     let startAngle: Angle
     let endAngle: Angle
     let color: Color
-    
+
     var body: some View {
         GeometryReader { geometry in
+            let size = geometry.size
+            let center = CGPoint(x: size.width / 2, y: size.height / 2)
+            let radius = min(size.width, size.height) / 2
+            let innerRadius = radius * 0.6
+
+            // Convert once to radians
+            let start = CGFloat(startAngle.radians)
+            let end = CGFloat(endAngle.radians)
+
+            // Guard against degenerate arcs
+            let epsilon: CGFloat = 0.0001
+            let span = abs(end - start)
+            let hasSpan = span > epsilon
+
             Path { path in
-                let center = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                let radius = min(geometry.size.width, geometry.size.height) / 2
-                let innerRadius = radius * 0.6
-                
-                path.addArc(center: center, radius: radius, startAngle: startAngle, endAngle: endAngle, clockwise: false)
-                path.addLine(to: CGPoint(
-                    x: center.x + innerRadius * cos(endAngle.radians),
-                    y: center.y + innerRadius * sin(endAngle.radians)
-                ))
-                path.addArc(center: center, radius: innerRadius, startAngle: endAngle, endAngle: startAngle, clockwise: true)
+                guard hasSpan else { return }
+
+                // Outer arc start/end points
+                let outerStart = CGPoint(x: center.x + radius * cos(start),
+                                         y: center.y + radius * sin(start))
+                let outerEnd   = CGPoint(x: center.x + radius * cos(end),
+                                         y: center.y + radius * sin(end))
+
+                // Inner arc start/end points (reverse direction)
+                let innerStart = CGPoint(x: center.x + innerRadius * cos(end),
+                                         y: center.y + innerRadius * sin(end))
+                let innerEnd   = CGPoint(x: center.x + innerRadius * cos(start),
+                                         y: center.y + innerRadius * sin(start))
+
+                // Start at outer start
+                path.move(to: outerStart)
+
+                // Draw outer arc (counterclockwise if end > start). SwiftUI’s addArc uses Angle,
+                // but Path here uses Core Graphics-style addArc with CG types via addArc(center:radius:startAngle:endAngle:clockwise:)
+                // The SwiftUI Path API provides addArc with Angle too, but to avoid any conversions,
+                // we construct arcs using addArc with CGFloat radians by bridging via CGPathAddArc-style.
+                path.addArc(center: center,
+                            radius: radius,
+                            startAngle: Angle(radians: Double(start)),
+                            endAngle: Angle(radians: Double(end)),
+                            clockwise: false)
+
+                // Line to inner start
+                path.addLine(to: innerStart)
+
+                // Draw inner arc back to inner end (reverse direction)
+                path.addArc(center: center,
+                            radius: innerRadius,
+                            startAngle: Angle(radians: Double(end)),
+                            endAngle: Angle(radians: Double(start)),
+                            clockwise: true)
+
+                // Close back to outer start
+                path.addLine(to: outerStart)
                 path.closeSubpath()
             }
             .fill(color)
         }
     }
 }
-
 // MARK: - Previews
 
 #Preview {
@@ -177,32 +219,3 @@ struct DonutSegment: View {
     .frame(width: 380, height: 240)
     .padding()
 }
-
-// MARK: - Color Extension
-
-extension Color {
-    init(hex: String) {
-        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        Scanner(string: hex).scanHexInt64(&int)
-        let a, r, g, b: UInt64
-        switch hex.count {
-        case 3: // RGB (12-bit)
-            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
-        case 6: // RGB (24-bit)
-            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
-        case 8: // ARGB (32-bit)
-            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
-        default:
-            (a, r, g, b) = (255, 0, 0, 0)
-        }
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue:  Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-}
-
