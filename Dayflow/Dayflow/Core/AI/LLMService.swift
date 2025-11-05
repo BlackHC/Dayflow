@@ -537,4 +537,63 @@ final class LLMService: LLMServicing {
             return "An unexpected error occurred."
         }
     }
+    
+    // MARK: - Journal Generation
+    
+    func generateJournal(for date: Date, completion: @escaping (Result<String, Error>) -> Void) {
+        Task {
+            do {
+                print("[LLMService] 📖 Generating journal for \(date)")
+                
+                guard let provider = provider else {
+                    throw NSError(domain: "LLMService", code: 1, userInfo: [
+                        NSLocalizedDescriptionKey: "No LLM provider configured"
+                    ])
+                }
+                
+                // Get day boundaries and fetch timeline cards
+                let dayInfo = date.getDayInfoFor4AMBoundary()
+                let cards = StorageManager.shared.fetchTimelineCardsByTimeRange(
+                    from: dayInfo.startOfDay,
+                    to: dayInfo.endOfDay
+                )
+                
+                guard !cards.isEmpty else {
+                    throw NSError(domain: "LLMService", code: 2, userInfo: [
+                        NSLocalizedDescriptionKey: "No timeline cards found for \(dayInfo.dayString)"
+                    ])
+                }
+                
+                print("[LLMService] Found \(cards.count) cards for \(dayInfo.dayString)")
+                
+                // Build journal generation context
+                let context = JournalGenerationContext.build(from: cards, date: date)
+                
+                // Generate narrative
+                let (narrative, _) = try await provider.generateJournalNarrative(
+                    cards: cards,
+                    context: context
+                )
+                
+                // Save to storage
+                let entryId = StorageManager.shared.saveJournalEntry(
+                    date: dayInfo.dayString,
+                    narrative: narrative,
+                    regenerationCount: 0
+                )
+                
+                if entryId != nil {
+                    print("[LLMService] ✅ Journal saved for \(dayInfo.dayString)")
+                } else {
+                    print("[LLMService] ⚠️ Failed to save journal for \(dayInfo.dayString)")
+                }
+                
+                completion(.success(narrative))
+                
+            } catch {
+                print("[LLMService] ❌ Journal generation failed: \(error)")
+                completion(.failure(error))
+            }
+        }
+    }
 }

@@ -2005,4 +2005,115 @@ private func uploadResumable(data: Data, mimeType: String) async throws -> Strin
             case displayName = "display_name"
         }
     }
+    
+    // MARK: - Journal Narrative Generation
+    
+    func generateJournalNarrative(cards: [TimelineCard], context: JournalGenerationContext) async throws -> (narrative: String, log: LLMCall) {
+        let startTime = Date()
+        print("[GeminiDirectProvider] 📖 Generating journal narrative for \(context.dayString)")
+        
+        var modelState = ModelRunState(models: modelPreference.orderedModels)
+        var lastError: Error?
+        
+        while true {
+            let model = modelState.current
+            print("[GeminiDirectProvider] Trying model: \(model.rawValue)")
+            
+            do {
+                let result = try await generateJournalWithModel(model, cards: cards, context: context, startTime: startTime)
+                return result
+            } catch {
+                lastError = error
+                
+                let nsError = error as NSError
+                let httpStatus = nsError.userInfo["httpStatus"] as? Int ?? 0
+                let isCapacityError = Self.capacityErrorCodes.contains(httpStatus)
+                
+                if isCapacityError, let (from, to) = modelState.advance() {
+                    print("[GeminiDirectProvider] ⚠️ \(from.rawValue) capacity error (HTTP \(httpStatus)), falling back to \(to.rawValue)")
+                    continue
+                }
+                
+                throw error
+            }
+        }
+    }
+    
+    private func generateJournalWithModel(_ model: GeminiModel, cards: [TimelineCard], context: JournalGenerationContext, startTime: Date) async throws -> (narrative: String, log: LLMCall) {
+        let endpoint = endpointForModel(model)
+        let systemPrompt = JournalPrompts.geminiSystemPrompt()
+        let userPrompt = JournalPrompts.geminiUserPrompt(cards: cards, context: context)
+        
+        let requestBody: [String: Any] = [
+            "contents": [
+                [
+                    "role": "user",
+                    "parts": [
+                        ["text": systemPrompt],
+                        ["text": userPrompt]
+                    ]
+                ]
+            ],
+            "generationConfig": [
+                "temperature": 0.7,
+                "topP": 0.95,
+                "maxOutputTokens": 2048
+            ]
+        ]
+        
+        let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
+        var request = URLRequest(url: URL(string: "\(endpoint)?key=\(apiKey)")!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = jsonData
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let httpResponse = response as! HTTPURLResponse
+        let latency = Date().timeIntervalSince(startTime)
+        
+        print("[GeminiDirectProvider] Journal generation response: HTTP \(httpResponse.statusCode), latency: \(String(format: "%.2f", latency))s")
+        
+        // Parse response
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let candidates = json["candidates"] as? [[String: Any]],
+              let firstCandidate = candidates.first,
+              let content = firstCandidate["content"] as? [String: Any],
+              let parts = content["parts"] as? [[String: Any]],
+              let firstPart = parts.first,
+              let narrative = firstPart["text"] as? String else {
+            
+            let errorMsg = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw NSError(domain: "GeminiError", code: httpResponse.statusCode, userInfo: [
+                NSLocalizedDescriptionKey: "Failed to parse journal narrative",
+                "response": errorMsg,
+                "httpStatus": httpResponse.statusCode
+            ])
+        }
+        
+        // Create log entry
+        let log = LLMCall(
+            id: nil,
+            createdAt: Date(),
+            batchId: nil,
+            callGroupId: nil,
+            attempt: 1,
+            provider: "gemini",
+            model: model.rawValue,
+            operation: "generateJournalNarrative",
+            status: "success",
+            latency: latency,
+            httpStatus: httpResponse.statusCode,
+            requestMethod: "POST",
+            requestUrl: endpoint,
+            requestHeaders: nil,
+            requestBody: String(data: jsonData, encoding: .utf8),
+            responseHeaders: nil,
+            responseBody: String(data: data, encoding: .utf8),
+            errorDomain: nil,
+            errorCode: nil,
+            errorMessage: nil
+        )
+        
+        return (narrative.trimmingCharacters(in: .whitespacesAndNewlines), log)
+    }
 }

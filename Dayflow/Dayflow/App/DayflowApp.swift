@@ -8,6 +8,7 @@ import Sparkle
 
 struct AppRootView: View {
     @EnvironmentObject private var categoryStore: CategoryStore
+    @EnvironmentObject private var dashboardStore: DashboardStore
     @State private var whatsNewNote: ReleaseNote? = nil
     @State private var activeWhatsNewVersion: String? = nil
     private let isWhatsNewEnabled = false
@@ -16,6 +17,7 @@ struct AppRootView: View {
         MainView()
             .environmentObject(AppState.shared)
             .environmentObject(categoryStore)
+            .environmentObject(dashboardStore)
             .onAppear {
                 guard isWhatsNewEnabled else { return }
                 // Check if we should show What's New automatically
@@ -75,6 +77,7 @@ struct DayflowApp: App {
     @State private var contentOpacity = 0.0
     @State private var contentScale = 0.98
     @StateObject private var categoryStore = CategoryStore()
+    @StateObject private var dashboardStore = DashboardStore()
     
     init() {
         // Comment out for production - only use for testing onboarding
@@ -93,11 +96,13 @@ struct DayflowApp: App {
                         // Show UI after onboarding
                         AppRootView()
                             .environmentObject(categoryStore)
+                            .environmentObject(dashboardStore)
                             .environmentObject(updaterManager)
                     } else {
                         OnboardingFlow()
                             .environmentObject(AppState.shared)
                             .environmentObject(categoryStore)
+                            .environmentObject(dashboardStore)
                             .environmentObject(updaterManager)
                     }
                 }

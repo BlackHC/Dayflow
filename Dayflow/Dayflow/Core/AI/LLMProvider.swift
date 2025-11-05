@@ -8,6 +8,7 @@ import Foundation
 protocol LLMProvider {
     func transcribeVideo(videoData: Data, mimeType: String, prompt: String, batchStartTime: Date, videoDuration: TimeInterval, batchId: Int64?) async throws -> (observations: [Observation], log: LLMCall)
     func generateActivityCards(observations: [Observation], context: ActivityGenerationContext, batchId: Int64?) async throws -> (cards: [ActivityCardData], log: LLMCall)
+    func generateJournalNarrative(cards: [TimelineCard], context: JournalGenerationContext) async throws -> (narrative: String, log: LLMCall)
 }
 
 struct ActivityGenerationContext {

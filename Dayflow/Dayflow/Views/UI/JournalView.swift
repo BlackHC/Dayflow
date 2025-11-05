@@ -1,46 +1,192 @@
+//
+//  JournalView.swift
+//  Dayflow
+//
+//  Daily journal narrative view
+//
+
 import SwiftUI
 
 struct JournalView: View {
+    @State private var selectedDate = Date()
+    @State private var entry: JournalEntry?
+    @State private var isGenerating = false
+    @State private var errorMessage: String?
+    
+    private let llmService = LLMService.shared
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("Journal")
-                .font(.custom("InstrumentSerif-Regular", size: 42))
-                .foregroundColor(.black)
-                .padding(.leading, 10) // Match Timeline header inset
-
-            // Preview area fills the remaining content space (static image)
-            ZStack {
-                GeometryReader { geo in
-                    Image("JournalPreview")
-                        .resizable()
-                        .interpolation(.high)
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
-                        .clipped()
+        ZStack {
+            // Background gradient
+            LinearGradient(
+                colors: [
+                    Color(hex: "#FFE8D6"),
+                    Color(hex: "#FFDCC0"),
+                    Color(hex: "#FFF5E8")
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Header with date selector
+                HStack(alignment: .center, spacing: 16) {
+                    JournalHeaderBadge()
+                    
+                    Spacer()
+                    
+                    // Date navigation
+                    HStack(spacing: 8) {
+                        Button(action: previousDay) {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(Color(hex: "#5C3A21").opacity(0.7))
+                                .frame(width: 28, height: 28)
+                                .background(Color.white.opacity(0.6))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Text(formatDate(selectedDate))
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(Color(hex: "#5C3A21"))
+                            .frame(minWidth: 120)
+                        
+                        Button(action: nextDay) {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(Color(hex: "#5C3A21").opacity(0.7))
+                                .frame(width: 28, height: 28)
+                                .background(Color.white.opacity(0.6))
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isToday())
+                    }
+                    .padding(.trailing, 10)
                 }
-
-                // Centered white rectangle overlay
-                VStack(spacing: 10) {
-                    Text("This feature is in development. Reach out via the feedback tab if you want to be the first to beta test it!")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.black)
-                        .multilineTextAlignment(.center)
-
-                    Text("A narrative overview of how you spent your day, highlighting focus blocks, key apps and sites, context switches, and distractions; perfect for reflection or sharing.")
-                        .font(.system(size: 13))
-                        .foregroundColor(Color.black.opacity(0.8))
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 480)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 20)
+                
+                // Content
+                ZStack {
+                    if isGenerating {
+                        JournalLoadingView()
+                    } else if let error = errorMessage {
+                        JournalErrorView(error: error) {
+                            generateJournal()
+                        }
+                    } else if let entry = entry {
+                        VStack(spacing: 0) {
+                            JournalNarrativeView(narrative: entry.narrative)
+                            
+                            // Regenerate button at bottom
+                            HStack {
+                                Spacer()
+                                
+                                Button(action: regenerateJournal) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "arrow.clockwise")
+                                            .font(.system(size: 12, weight: .medium))
+                                        Text("Regenerate")
+                                            .font(.system(size: 13, weight: .medium))
+                                    }
+                                    .foregroundColor(Color(hex: "#5C3A21").opacity(0.7))
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .background(Color.white.opacity(0.6))
+                                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                }
+                                .buttonStyle(.plain)
+                                
+                                Spacer()
+                            }
+                            .padding(.vertical, 16)
+                        }
+                    } else {
+                        JournalEmptyState(date: selectedDate) {
+                            generateJournal()
+                        }
+                    }
                 }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 14)
-                .background(Color.white.opacity(0.96))
-                .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
-                .shadow(color: Color.black.opacity(0.10), radius: 10, x: 0, y: 6)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onAppear {
+            loadEntry()
+        }
+        .onChange(of: selectedDate) { _, _ in
+            loadEntry()
+        }
     }
+    
+    // MARK: - Actions
+    
+    private func previousDay() {
+        selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+    }
+    
+    private func nextDay() {
+        guard !isToday() else { return }
+        selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
+    }
+    
+    private func isToday() -> Bool {
+        Calendar.current.isDate(selectedDate, inSameDayAs: Date())
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        if Calendar.current.isDateInToday(date) {
+            return "Today"
+        } else if Calendar.current.isDateInYesterday(date) {
+            return "Yesterday"
+        } else {
+            formatter.dateFormat = "MMM d, yyyy"
+            return formatter.string(from: date)
+        }
+    }
+    
+    private func loadEntry() {
+        let dayInfo = selectedDate.getDayInfoFor4AMBoundary()
+        entry = StorageManager.shared.fetchJournalEntry(for: dayInfo.dayString)
+        errorMessage = nil
+        
+        if entry != nil {
+            print("[JournalView] Loaded entry for \(dayInfo.dayString)")
+        }
+    }
+    
+    private func generateJournal() {
+        isGenerating = true
+        errorMessage = nil
+        
+        llmService.generateJournal(for: selectedDate) { result in
+            DispatchQueue.main.async {
+                isGenerating = false
+                
+                switch result {
+                case .success(let narrative):
+                    print("[JournalView] Successfully generated journal: \(narrative.prefix(100))...")
+                    loadEntry() // Reload from storage
+                    
+                case .failure(let error):
+                    print("[JournalView] Generation failed: \(error)")
+                    errorMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+    
+    private func regenerateJournal() {
+        generateJournal()
+    }
+}
+
+// MARK: - Previews
+
+#Preview("Empty State") {
+    JournalView()
+        .frame(width: 800, height: 600)
 }

@@ -105,6 +105,12 @@ protocol StorageManaging: Sendable {
     
     /// All batches, newest first
     func allBatches() -> [(id: Int64, start: Int, end: Int, status: String)]
+    
+    // Journal entries
+    func saveJournalEntry(date: String, narrative: String, regenerationCount: Int) -> Int64?
+    func fetchJournalEntry(for date: String) -> JournalEntry?
+    func deleteJournalEntry(for date: String)
+    func fetchRecentJournalEntries(limit: Int) -> [JournalEntry]
 }
 
 
@@ -572,6 +578,18 @@ final class StorageManager: StorageManaging, @unchecked Sendable {
                 CREATE INDEX IF NOT EXISTS idx_llm_calls_created ON llm_calls(created_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_llm_calls_group ON llm_calls(call_group_id, attempt);
                 CREATE INDEX IF NOT EXISTS idx_llm_calls_batch ON llm_calls(batch_id);
+            """)
+            
+            // Journal entries table
+            try db.execute(sql: """
+                CREATE TABLE IF NOT EXISTS journal_entries (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    date TEXT NOT NULL UNIQUE,  -- YYYY-MM-DD format (4 AM boundary)
+                    narrative TEXT NOT NULL,
+                    generated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    regeneration_count INTEGER NOT NULL DEFAULT 0
+                );
+                CREATE INDEX IF NOT EXISTS idx_journal_entries_date ON journal_entries(date DESC);
             """)
 
             // Migration: Add soft delete column to timeline_cards if it doesn't exist
@@ -1926,6 +1944,110 @@ private extension StorageManager {
                 print("⚠️ StorageManager: failed to migrate \(name): \(error)")
             }
         }
+    }
+    
+    // MARK: - Journal Entries
+    
+    func saveJournalEntry(date: String, narrative: String, regenerationCount: Int = 0) -> Int64? {
+        return try? timedWrite("saveJournalEntry") { db in
+            // Check if entry already exists
+            if let existing = try Row.fetchOne(db, sql: """
+                SELECT id, regeneration_count FROM journal_entries WHERE date = ?
+            """, arguments: [date]) {
+                let existingId: Int64 = existing["id"]
+                let newCount = regenerationCount > 0 ? regenerationCount : (existing["regeneration_count"] as Int? ?? 0) + 1
+                
+                // Update existing entry
+                try db.execute(sql: """
+                    UPDATE journal_entries 
+                    SET narrative = ?, generated_at = datetime('now'), regeneration_count = ?
+                    WHERE date = ?
+                """, arguments: [narrative, newCount, date])
+                
+                print("[StorageManager] 📝 Updated journal entry for \(date) (regeneration #\(newCount))")
+                return existingId
+            } else {
+                // Insert new entry
+                try db.execute(sql: """
+                    INSERT INTO journal_entries (date, narrative, regeneration_count)
+                    VALUES (?, ?, ?)
+                """, arguments: [date, narrative, regenerationCount])
+                
+                let newId = db.lastInsertedRowID
+                print("[StorageManager] 📝 Created journal entry for \(date)")
+                return newId
+            }
+        }
+    }
+    
+    func fetchJournalEntry(for date: String) -> JournalEntry? {
+        return try? timedRead("fetchJournalEntry") { db in
+            guard let row = try Row.fetchOne(db, sql: """
+                SELECT id, date, narrative, generated_at, regeneration_count
+                FROM journal_entries
+                WHERE date = ?
+            """, arguments: [date]) else {
+                return nil
+            }
+            
+            let id: Int64 = row["id"]
+            let date: String = row["date"]
+            let narrative: String = row["narrative"]
+            let generatedAtString: String = row["generated_at"]
+            let regenerationCount: Int = row["regeneration_count"]
+            
+            // Parse ISO8601 datetime
+            let formatter = ISO8601DateFormatter()
+            let generatedAt = formatter.date(from: generatedAtString) ?? Date()
+            
+            return JournalEntry(
+                id: id,
+                date: date,
+                narrative: narrative,
+                generatedAt: generatedAt,
+                regenerationCount: regenerationCount
+            )
+        }
+    }
+    
+    func deleteJournalEntry(for date: String) {
+        try? timedWrite("deleteJournalEntry") { db in
+            try db.execute(sql: """
+                DELETE FROM journal_entries WHERE date = ?
+            """, arguments: [date])
+            
+            print("[StorageManager] 🗑️ Deleted journal entry for \(date)")
+        }
+    }
+    
+    func fetchRecentJournalEntries(limit: Int = 10) -> [JournalEntry] {
+        return (try? timedRead("fetchRecentJournalEntries") { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT id, date, narrative, generated_at, regeneration_count
+                FROM journal_entries
+                ORDER BY date DESC
+                LIMIT ?
+            """, arguments: [limit])
+            
+            return rows.compactMap { row -> JournalEntry? in
+                let id: Int64 = row["id"]
+                let date: String = row["date"]
+                let narrative: String = row["narrative"]
+                let generatedAtString: String = row["generated_at"]
+                let regenerationCount: Int = row["regeneration_count"]
+                
+                let formatter = ISO8601DateFormatter()
+                let generatedAt = formatter.date(from: generatedAtString) ?? Date()
+                
+                return JournalEntry(
+                    id: id,
+                    date: date,
+                    narrative: narrative,
+                    generatedAt: generatedAt,
+                    regenerationCount: regenerationCount
+                )
+            }
+        }) ?? []
     }
 }
 

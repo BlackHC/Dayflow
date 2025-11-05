@@ -1444,4 +1444,80 @@ final class OllamaProvider: LLMProvider {
             userInfo: [NSLocalizedDescriptionKey: "Failed to generate merged observations after multiple attempts"]
         )
     }
+    
+    // MARK: - Journal Narrative Generation
+    
+    func generateJournalNarrative(cards: [TimelineCard], context: JournalGenerationContext) async throws -> (narrative: String, log: LLMCall) {
+        let startTime = Date()
+        print("[OllamaProvider] 📖 Generating journal narrative for \(context.dayString)")
+        
+        let prompt = JournalPrompts.ollamaPrompt(cards: cards, context: context)
+        
+        let requestBody: [String: Any] = [
+            "model": preferences.modelName,
+            "prompt": prompt,
+            "stream": false,
+            "options": [
+                "temperature": 0.7,
+                "top_p": 0.9
+            ]
+        ]
+        
+        let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
+        let url = URL(string: "\(endpoint)/api/generate")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = jsonData
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let httpResponse = response as! HTTPURLResponse
+        let latency = Date().timeIntervalSince(startTime)
+        
+        print("[OllamaProvider] Journal generation response: HTTP \(httpResponse.statusCode), latency: \(String(format: "%.2f", latency))s")
+        
+        guard httpResponse.statusCode == 200 else {
+            let errorMsg = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw NSError(domain: "OllamaProvider", code: httpResponse.statusCode, userInfo: [
+                NSLocalizedDescriptionKey: "Ollama journal generation failed",
+                "response": errorMsg
+            ])
+        }
+        
+        // Parse response
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let narrative = json["response"] as? String else {
+            let errorMsg = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw NSError(domain: "OllamaProvider", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "Failed to parse journal narrative",
+                "response": errorMsg
+            ])
+        }
+        
+        // Create log entry
+        let log = LLMCall(
+            id: nil,
+            createdAt: Date(),
+            batchId: nil,
+            callGroupId: nil,
+            attempt: 1,
+            provider: "ollama",
+            model: preferences.modelName,
+            operation: "generateJournalNarrative",
+            status: "success",
+            latency: latency,
+            httpStatus: httpResponse.statusCode,
+            requestMethod: "POST",
+            requestUrl: url.absoluteString,
+            requestHeaders: nil,
+            requestBody: String(data: jsonData, encoding: .utf8),
+            responseHeaders: nil,
+            responseBody: String(data: data, encoding: .utf8),
+            errorDomain: nil,
+            errorCode: nil,
+            errorMessage: nil
+        )
+        
+        return (narrative.trimmingCharacters(in: .whitespacesAndNewlines), log)
+    }
 }
