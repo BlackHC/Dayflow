@@ -33,7 +33,7 @@ struct AppTimeTrackedTile: View {
     let data: [AppTimeData]
     let totalTime: TimeInterval
     
-    /// Processes data to show top categories until 75% coverage, then groups rest as "Other"
+    /// Processes data to show top categories with at least 75% coverage, then groups rest as "Other"
     private var processedData: [AppTimeData] {
         guard !data.isEmpty else { return [] }
         

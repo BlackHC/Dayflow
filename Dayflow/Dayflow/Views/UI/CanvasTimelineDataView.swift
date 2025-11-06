@@ -196,7 +196,8 @@ struct CanvasTimelineDataView: View {
                         }
                     },
                     faviconPrimaryHost: item.faviconPrimaryHost,
-                    faviconSecondaryHost: item.faviconSecondaryHost
+                    faviconSecondaryHost: item.faviconSecondaryHost,
+                    activity: item.activity
                 )
                 .frame(height: item.height)
                 .offset(y: item.yPosition)
@@ -644,6 +645,7 @@ struct CanvasActivityCard: View {
     let onTap: () -> Void
     let faviconPrimaryHost: String?
     let faviconSecondaryHost: String?
+    let activity: TimelineActivity
 
     private var isFailedCard: Bool {
         title == "Processing failed"
@@ -707,6 +709,67 @@ struct CanvasActivityCard: View {
         .padding(.horizontal, 6)
         .contentShape(Rectangle())
         .onTapGesture { onTap() }
+        .contextMenu {
+            Button(action: {
+                copyActivityAsMarkdown(activity)
+            }) {
+                Text("Copy as Markdown")
+                Image(systemName: "doc.on.doc")
+            }
+        }
+    }
+    
+    private func copyActivityAsMarkdown(_ activity: TimelineActivity) {
+        let markdown = formatActivityAsMarkdown(activity)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(markdown, forType: .string)
+    }
+    
+    private func formatActivityAsMarkdown(_ activity: TimelineActivity) -> String {
+        let timeFormatter = DateFormatter()
+        timeFormatter.dateFormat = "h:mm a"
+        
+        let startTimeStr = timeFormatter.string(from: activity.startTime)
+        let endTimeStr = timeFormatter.string(from: activity.endTime)
+        
+        var markdown = """
+        # \(activity.title)
+        
+        **Time:** \(startTimeStr) - \(endTimeStr)
+        **Category:** \(activity.category)
+        """
+        
+        if !activity.subcategory.isEmpty {
+            markdown += "\n**Subcategory:** \(activity.subcategory)"
+        }
+        
+        markdown += "\n\n## Summary\n\n\(activity.summary)"
+        
+        if !activity.detailedSummary.isEmpty && activity.detailedSummary != activity.summary {
+            markdown += "\n\n## Detailed Summary\n\n\(activity.detailedSummary)"
+        }
+        
+        if let appSites = activity.appSites {
+            markdown += "\n\n## Apps & Sites"
+            if let primary = appSites.primary {
+                markdown += "\n- Primary: \(primary)"
+            }
+            if let secondary = appSites.secondary {
+                markdown += "\n- Secondary: \(secondary)"
+            }
+        }
+        
+        if let distractions = activity.distractions, !distractions.isEmpty {
+            markdown += "\n\n## Distractions\n"
+            for distraction in distractions {
+                markdown += "\n### \(distraction.title)\n"
+                markdown += "**Time:** \(distraction.startTime) - \(distraction.endTime)\n"
+                markdown += "\(distraction.summary)\n"
+            }
+        }
+        
+        return markdown
     }
 }
 

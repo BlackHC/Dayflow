@@ -53,6 +53,7 @@ struct JournalNarrativeView: View {
                 .padding(32)
                 .frame(maxWidth: 600)
                 .opacity(opacity)
+                .textSelection(.enabled)
         }
         .onAppear {
             withAnimation(.easeIn(duration: 0.6)) {
