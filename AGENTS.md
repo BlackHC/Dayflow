@@ -786,6 +786,88 @@ AnalyticsService.shared.capture("event_name", [
 - `SentryHelper.isEnabled` flag controls usage
 - Transaction tracking for performance monitoring
 
+### View-Specific Logic and Model Separation
+
+**Canonical Pattern:** Keep models as pure data structures. Put presentation and interaction logic in views as `private func` methods.
+
+**Where to Put Logic:**
+
+**✅ Models (`Models/`, data models in view files):**
+- Pure data structures with properties
+- Codable conformance
+- Computed properties for data transformation
+- NO view-specific logic (formatting, clipboard, presentation)
+
+**✅ Views (SwiftUI View structs):**
+- Private methods for view-specific operations
+- Formatting for display (e.g., `formatActivityAsMarkdown(_:)`)
+- Clipboard operations (e.g., `copyActivityAsMarkdown(_:)`)
+- User interaction handlers
+
+**✅ Extensions on Views:**
+- Group related private methods for organization
+- Keep logic close to where it's used
+- Example: `extension MainView { private func startDayChangeTimer() { ... } }`
+
+**❌ Extensions on Models (for view logic):**
+- Don't add view-specific methods to model extensions
+- Don't add presentation logic to data structures
+- Don't pollute models with format-specific code
+
+**Example - Following the Pattern:**
+
+```swift
+// ✅ CORRECT: Model is pure data
+struct TimelineActivity {
+    let title: String
+    let startTime: Date
+    let endTime: Date
+    // ... other properties
+}
+
+// ✅ CORRECT: View has private methods for presentation
+struct CanvasActivityCard: View {
+    let activity: TimelineActivity
+    
+    var body: some View {
+        // ... view code
+        .contextMenu {
+            Button(action: { copyActivityAsMarkdown(activity) }) {
+                Text("Copy as Markdown")
+            }
+        }
+    }
+    
+    private func copyActivityAsMarkdown(_ activity: TimelineActivity) {
+        let markdown = formatActivityAsMarkdown(activity)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(markdown, forType: .string)
+    }
+    
+    private func formatActivityAsMarkdown(_ activity: TimelineActivity) -> String {
+        // Formatting logic here
+    }
+}
+
+// ❌ WRONG: Don't extend models with view logic
+extension TimelineActivity {
+    func toMarkdown() -> String { ... }  // View-specific!
+    func copyToClipboard() { ... }       // View operation!
+}
+```
+
+**Rationale:**
+1. **Separation of Concerns:** Models represent data, views handle presentation
+2. **Flexibility:** Different views can format the same model differently
+3. **Testability:** View logic can be tested independently
+4. **Maintainability:** Logic lives where it's used, easier to find and modify
+5. **Follows Codebase Patterns:** See `BugReportView.copyEmail()`, `TerminalCommandView.copyCommand()`
+
+**When to Use Extensions:**
+- **On Models:** Generic utilities (e.g., `Color.init(hex:)`, `Date.getDayInfoFor4AMBoundary()`)
+- **On Views:** Organizing related private methods (e.g., `extension MainView { timer methods }`)
+- **Generic Protocols:** Reusable view modifiers (e.g., `extension View { func dayflowShadow() }`)
+
 ---
 
 ## Key File Reference Guide
