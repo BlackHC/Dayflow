@@ -7,9 +7,69 @@
 
 import SwiftUI
 
+// MARK: - Shared Color Palette
+
+/// Shared color palette for app time visualization
+/// Cycles through colors if more than 8 categories are displayed
+private let appTimeColors: [Color] = [
+    Color(hex: "#FF8C42"), // Orange
+    Color(hex: "#6AADFF"), // Blue
+    Color(hex: "#FFB84D"), // Yellow
+    Color(hex: "#60D394"), // Green
+    Color(hex: "#B984FF"), // Purple
+    Color(hex: "#FF6B9D"), // Pink
+    Color(hex: "#4ECDC4"), // Teal
+    Color(hex: "#FFE66D")  // Light Yellow
+]
+
+/// Returns color for given index with cyclic wrap-around
+private func colorForAppTimeIndex(_ index: Int) -> Color {
+    appTimeColors[index % appTimeColors.count]
+}
+
+// MARK: - App Time Tracked Tile
+
 struct AppTimeTrackedTile: View {
     let data: [AppTimeData]
     let totalTime: TimeInterval
+    
+    /// Processes data to show top categories until 75% coverage, then groups rest as "Other"
+    private var processedData: [AppTimeData] {
+        guard !data.isEmpty else { return [] }
+        
+        var result: [AppTimeData] = []
+        var cumulativePercentage: Double = 0.0
+        var remainingItems: [AppTimeData] = []
+        
+        for item in data {
+            if cumulativePercentage < 75.0 {
+                result.append(item)
+                cumulativePercentage += item.percentage
+            } else {
+                remainingItems.append(item)
+            }
+        }
+        
+        // If there are remaining items, create an "Other" category
+        if remainingItems.count == 1 {
+            // Just add the single remaining item directly
+            result.append(remainingItems[0])
+        } else if remainingItems.count > 1 {
+            // Combine multiple remaining items into an "Other" category
+            let otherDuration = remainingItems.reduce(0) { $0 + $1.duration }
+            let otherPercentage = remainingItems.reduce(0) { $0 + $1.percentage }
+            
+            let otherCategory = AppTimeData(
+                appName: "Other",
+                duration: otherDuration,
+                percentage: otherPercentage
+            )
+            result.append(otherCategory)
+        }
+        
+        // Limit to 4 items for display
+        return Array(result.prefix(4))
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -35,15 +95,15 @@ struct AppTimeTrackedTile: View {
             } else {
                 HStack(spacing: 20) {
                     // Donut chart
-                    DonutChartView(data: data.prefix(4).map { $0.percentage })
+                    DonutChartView(data: processedData.map { $0.percentage })
                         .frame(width: 100, height: 100)
                     
                     // Legend
                     VStack(alignment: .leading, spacing: 6) {
-                        ForEach(Array(data.prefix(4).enumerated()), id: \.offset) { index, app in
+                        ForEach(Array(processedData.enumerated()), id: \.offset) { index, app in
                             HStack(spacing: 6) {
                                 Circle()
-                                    .fill(colorForIndex(index))
+                                    .fill(colorForAppTimeIndex(index))
                                     .frame(width: 8, height: 8)
                                 
                                 Text(app.appName)
@@ -87,16 +147,6 @@ struct AppTimeTrackedTile: View {
             return "(\(minutes)m)"
         }
     }
-    
-    private func colorForIndex(_ index: Int) -> Color {
-        let colors: [Color] = [
-            Color(hex: "#FF8C42"), // Orange
-            Color(hex: "#6AADFF"), // Blue
-            Color(hex: "#FFB84D"), // Yellow
-            Color(hex: "#D4D4D4")  // Gray
-        ]
-        return colors[index % colors.count]
-    }
 }
 
 struct DonutChartView: View {
@@ -109,7 +159,7 @@ struct DonutChartView: View {
                      DonutSegment(
                          startAngle: startAngle(for: index),
                          endAngle: endAngle(for: index),
-                         color: colorForIndex(index)
+                         color: colorForAppTimeIndex(index)
                      )
                  }
             }
@@ -124,16 +174,6 @@ struct DonutChartView: View {
     private func endAngle(for index: Int) -> Angle {
         let sum = data.prefix(index + 1).reduce(0, +)
         return Angle(degrees: sum * 3.6 - 90)
-    }
-    
-    private func colorForIndex(_ index: Int) -> Color {
-        let colors: [Color] = [
-            Color(hex: "#FF8C42"),
-            Color(hex: "#6AADFF"),
-            Color(hex: "#FFB84D"),
-            Color(hex: "#D4D4D4")
-        ]
-        return colors[index % colors.count]
     }
 }
 
@@ -206,16 +246,49 @@ struct DonutSegment: View {
 }
 // MARK: - Previews
 
-#Preview {
+#Preview("With Other Category") {
+    // This demonstrates the 75% threshold: First 3 apps = 75%, rest grouped as "Other"
     AppTimeTrackedTile(
         data: [
-            AppTimeData(appName: "Chrome", duration: 15480, percentage: 43),
-            AppTimeData(appName: "VS Code", duration: 6480, percentage: 18),
-            AppTimeData(appName: "Slack", duration: 5400, percentage: 15),
-            AppTimeData(appName: "Other", duration: 1440, percentage: 4)
+            AppTimeData(appName: "Chrome", duration: 10800, percentage: 30),    // 30%
+            AppTimeData(appName: "VS Code", duration: 9000, percentage: 25),     // 25%
+            AppTimeData(appName: "Slack", duration: 7200, percentage: 20),       // 20%
+            AppTimeData(appName: "Spotify", duration: 3600, percentage: 10),     // 10% (will be in Other)
+            AppTimeData(appName: "Mail", duration: 2700, percentage: 7.5),       // 7.5% (will be in Other)
+            AppTimeData(appName: "Safari", duration: 2700, percentage: 7.5)      // 7.5% (will be in Other)
         ],
-        totalTime: 28800
+        totalTime: 36000
     )
     .frame(width: 380, height: 240)
     .padding()
 }
+
+#Preview("No Other") {
+    // All items shown since total is under 75% with just 2 items
+    AppTimeTrackedTile(
+        data: [
+            AppTimeData(appName: "Chrome", duration: 18000, percentage: 50),
+            AppTimeData(appName: "VS Code", duration: 7200, percentage: 50),
+        ],
+        totalTime: 36000
+    )
+    .frame(width: 380, height: 240)
+    .padding()
+}
+
+#Preview("Single Remainder") {
+    // All items shown since total is under 75% with just 2 items
+    AppTimeTrackedTile(
+        data: [
+            AppTimeData(appName: "Chrome", duration: 18000, percentage: 50),
+            AppTimeData(appName: "VS Code", duration: 7200, percentage: 30),
+            AppTimeData(appName: "Spotify", duration: 3600, percentage: 20),
+        ],
+        totalTime: 36000
+    )
+    .frame(width: 380, height: 240)
+    .padding()
+}
+
+
+
