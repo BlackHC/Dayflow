@@ -92,6 +92,11 @@ struct SettingsView: View {
     @State private var showClearConfirmation = false
     @State private var debugMessage: String?
     @State private var debugMessageType: DebugMessageType = .success
+    
+    // Reprocessing state
+    @State private var isReprocessing = false
+    @State private var reprocessProgress: String = ""
+    @State private var reprocessDate = Date()
     #endif
 
     // Providers – debug log copy feedback
@@ -887,6 +892,80 @@ struct SettingsView: View {
                 Divider()
                     .background(Color.black.opacity(0.1))
                 
+                // Reprocess data section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Reprocess Recordings")
+                        .font(.custom("Nunito", size: 13))
+                        .fontWeight(.semibold)
+                        .foregroundColor(.black.opacity(0.7))
+                    
+                    Text("Regenerate observations and timeline cards from existing video recordings using current LLM settings. Useful for testing prompt changes.")
+                        .font(.custom("Nunito", size: 12))
+                        .foregroundColor(.black.opacity(0.5))
+                        .fixedSize(horizontal: false, vertical: true)
+                    
+                    HStack(spacing: 12) {
+                        DatePicker("Date:", selection: $reprocessDate, displayedComponents: .date)
+                            .datePickerStyle(.compact)
+                            .font(.custom("Nunito", size: 13))
+                            .foregroundColor(.black.opacity(0.6))
+                        
+                        Button {
+                            reprocessDay()
+                        } label: {
+                            HStack(spacing: 8) {
+                                if isReprocessing {
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                        .frame(width: 14, height: 14)
+                                    Text("Reprocessing...")
+                                } else {
+                                    Image(systemName: "arrow.clockwise")
+                                    Text("Reprocess Day")
+                                }
+                            }
+                            .font(.custom("Nunito", size: 13))
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(isReprocessing ? Color.gray : Color.blue)
+                            )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .disabled(isReprocessing)
+                    }
+                    
+                    // Progress display
+                    if !reprocessProgress.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Progress:")
+                                .font(.custom("Nunito", size: 12))
+                                .fontWeight(.semibold)
+                                .foregroundColor(.black.opacity(0.7))
+                            
+                            ScrollView {
+                                Text(reprocessProgress)
+                                    .font(.custom("SF Mono", size: 11))
+                                    .foregroundColor(.black.opacity(0.6))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .textSelection(.enabled)
+                            }
+                            .frame(maxHeight: 150)
+                            .padding(8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color.black.opacity(0.05))
+                            )
+                        }
+                    }
+                }
+                
+                Divider()
+                    .background(Color.black.opacity(0.1))
+                
                 // Clear data section
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Clear All Mock Data")
@@ -1008,6 +1087,57 @@ struct SettingsView: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
                     debugMessage = nil
                 }
+            }
+        }
+    }
+    
+    private func reprocessDay() {
+        isReprocessing = true
+        reprocessProgress = ""
+        debugMessage = nil
+        
+        // Get the day string in YYYY-MM-DD format using 4AM boundary
+        let dayInfo = reprocessDate.getDayInfoFor4AMBoundary()
+        let dayString = dayInfo.dayString
+        
+        Task {
+            await MainActor.run {
+                reprocessProgress = "Starting reprocessing for \(dayString)...\n"
+            }
+            
+            // Call AnalysisManager to reprocess the day
+            await withCheckedContinuation { continuation in
+                AnalysisManager.shared.reprocessDay(
+                    dayString,
+                    progressHandler: { progress in
+                        Task { @MainActor in
+                            self.reprocessProgress += "\(progress)\n"
+                        }
+                    },
+                    completion: { result in
+                        Task { @MainActor in
+                            self.isReprocessing = false
+                            
+                            switch result {
+                            case .success:
+                                self.debugMessage = "✓ Successfully reprocessed \(dayString)"
+                                self.debugMessageType = .success
+                                self.refreshDatabaseStats()
+                                
+                            case .failure(let error):
+                                self.debugMessage = "✗ Reprocessing failed: \(error.localizedDescription)"
+                                self.debugMessageType = .warning
+                            }
+                            
+                            // Clear debug message after 10 seconds
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+                                self.debugMessage = nil
+                            }
+                        }
+                        
+                        continuation.resume()
+                    }
+                )
             }
         }
     }
