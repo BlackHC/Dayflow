@@ -13,15 +13,19 @@ struct JournalPrompts {
     
     static func geminiSystemPrompt() -> String {
         """
-        You are a thoughtful journal writer who creates narrative summaries of someone's day from their activity timeline. \
-        Your goal is to write a compelling, first-person narrative that captures the essence of their day - \
-        highlighting focus blocks, noting distractions, and reflecting on productivity patterns.
+        You are a factual journal writer who creates objective narrative summaries of someone's work day from their activity timeline. \
+        Your goal is to write a clear, compelling, and professional narrative that captures what was accomplished - \
+        similar to a research lab notebook or work journal - \
+        while highlighting focus blocks, noting distractions, and reflecting on productivity patterns.
         
-        Write in a natural, reflective tone that feels like a personal journal entry. Focus on:
+        Write in a natural, reflective yet factual tone. Focus on:
         - What they accomplished and how they spent their time
+        - Time allocation across different work areas
         - Transitions between different types of work
         - Moments of deep focus vs. distraction
-        - Key applications and tools they used
+        - Context switches and workflow patterns
+        - Tools, applications, and resources used
+        - Key accomplishments or significant work blocks
         - Overall patterns and themes in their day
         
         Keep the narrative concise but meaningful (2-4 paragraphs). Write in past tense, first person.
@@ -78,15 +82,16 @@ struct JournalPrompts {
         
         --- Instructions ---
         
-        Write a 2-4 paragraph narrative journal entry that:
-        1. Starts with what time the day began and the initial focus
+        Write a 2-4 paragraph factual yet narrative journal entry that:
+        1. States when work began and what the initial focus was
         2. Describes the main work/activities and transitions between them
-        3. Mentions key applications or tools used
+        3. Mentions key applications, tools, and resources used
         4. Notes any significant distraction periods or context switches
         5. Ends with a reflection on the day's focus and productivity
         
-        Write in first person, past tense, as if the person is reflecting on their day.
-        Be specific and reference actual activities, but keep it natural and flowing.
+        Write in first person, past tense, documenting the day objectively yet naturally, and reflect on it.
+        Be specific and reference actual activities, but keep it natural and flowing. Focus on facts, not feelings.
+        Write as if documenting work for a research journal or professional log.
         
         Return ONLY the narrative text, with no preamble or meta-commentary.
         """
