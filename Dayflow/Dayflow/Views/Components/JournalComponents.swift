@@ -47,7 +47,7 @@ struct JournalNarrativeView: View {
     var body: some View {
         ScrollView {
             Text(narrative)
-                .font(.custom("InstrumentSerif-Regular", size: 18))
+                .font(.custom("Nunito", size: 16))
                 .foregroundColor(Color(hex: "#5C3A21"))
                 .lineSpacing(8)
                 .padding(32)
@@ -77,7 +77,7 @@ struct JournalLoadingView: View {
             
             VStack(spacing: 8) {
                 Text("Generating your journal\(dots)")
-                    .font(.custom("InstrumentSerif-Regular", size: 20))
+                    .font(.custom("Nunito", size: 20))
                     .foregroundColor(Color(hex: "#5C3A21"))
                 
                 Text("Reading through your day's activities...")
@@ -121,7 +121,7 @@ struct JournalEmptyState: View {
             
             VStack(spacing: 12) {
                 Text("No Journal Entry Yet")
-                    .font(.custom("InstrumentSerif-Regular", size: 28))
+                    .font(.custom("Nunito", size: 28))
                     .foregroundColor(Color(hex: "#5C3A21"))
                 
                 Text("Generate a narrative summary of your day")
@@ -169,7 +169,7 @@ struct JournalErrorView: View {
             
             VStack(spacing: 12) {
                 Text("Generation Failed")
-                    .font(.custom("InstrumentSerif-Regular", size: 28))
+                    .font(.custom("Nunito", size: 28))
                     .foregroundColor(Color(hex: "#5C3A21"))
                 
                 Text(error)
